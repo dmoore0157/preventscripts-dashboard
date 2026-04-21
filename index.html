@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PreventScripts — Program Performance Dashboard · v3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF7F0;--paper-2:#F3EFE4;--paper-3:#EAE4D4;
+    --ink:#1A1A1A;--ink-2:#2E2E2E;--muted:#6B6962;
+    --rule:#CFC9BB;--rule-strong:#8F8A7C;
+    --alert:#B94A3C;--warn:#9B7A2F;--positive:#4A6B3A;--accent:#1F3A5F;--opp:#2D5F4C;
+    --highlight:#FFF1C2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",sans-serif;line-height:1.45;font-size:14px;scroll-behavior:smooth}
+  .page{max-width:1340px;margin:0 auto;padding:36px 48px 80px}
+  .num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+
+  /* ── MASTHEAD ── */
+  .masthead{border-bottom:3px double var(--ink);padding-bottom:20px;margin-bottom:0}
+  .masthead .kicker{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .masthead h1{font-family:"Fraunces",serif;font-weight:500;font-size:42px;line-height:1.05;letter-spacing:-0.01em;margin-bottom:8px}
+  .masthead h1 em{font-style:italic;color:var(--accent);font-weight:400}
+  .masthead .version{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-left:10px;vertical-align:middle}
+  .masthead .meta{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;font-size:12px;color:var(--muted);font-family:"IBM Plex Mono",monospace;margin-top:8px}
+  .masthead .meta span strong{color:var(--ink);font-weight:500}
+
+  /* ── SCOPE / REVISION NOTE ── */
+  .revision{background:var(--paper-2);padding:12px 20px;margin:16px 0 0;font-size:12px;color:var(--ink-2);border:1px solid var(--rule);display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+  .revision b{color:var(--ink)}
+  .revision .v-tag{background:var(--accent);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:0.16em;padding:5px 10px;font-weight:600}
+
+  /* ── DATA-SOURCE DISCLOSURE ── */
+  .disclosure{background:var(--paper-3);border-left:4px solid var(--warn);padding:14px 22px;margin:18px 0 26px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;font-size:12px}
+  .disclosure .stamp{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--warn);font-weight:600;border:1.5px solid var(--warn);padding:8px 12px;line-height:1.15;text-align:center;white-space:nowrap}
+  .disclosure p{line-height:1.55;color:var(--ink-2);margin-bottom:6px}
+  .disclosure p:last-child{margin-bottom:0}
+  .disclosure b{color:var(--ink);font-weight:600}
+
+  /* ── FILTER BAR ── */
+  .filters{display:grid;grid-template-columns:auto repeat(4, 1fr);gap:0;margin-bottom:24px;border:1px solid var(--ink);background:var(--paper)}
+  .filters .f-group{border-right:1px solid var(--ink);display:flex;flex-direction:column}
+  .filters .f-group:last-child{border-right:none}
+  .filters .f-label{background:var(--ink);color:var(--paper);padding:6px 10px;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase}
+  .filters .f-buttons{display:flex;flex-wrap:wrap}
+  .filters button{flex:1;background:var(--paper);border:none;border-right:1px solid var(--rule);border-top:1px solid var(--rule);padding:8px 10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-2);cursor:pointer;transition:background 0.15s;font-weight:500;letter-spacing:0.02em;min-width:60px}
+  .filters button:last-child{border-right:none}
+  .filters button:hover:not(:disabled){background:var(--paper-2)}
+  .filters button.active{background:var(--ink);color:var(--paper);font-weight:600}
+  .filters button:disabled{background:var(--paper-2);color:var(--muted);cursor:not-allowed;opacity:0.65}
+  .filters button:disabled::after{content:" ⊘";font-size:10px;color:var(--alert)}
+  .filter-note{grid-column:1/-1;background:#F8EEEA;border-top:1px solid var(--rule);padding:7px 16px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--alert);letter-spacing:0.02em;display:flex;justify-content:space-between}
+
+  /* ── SIGNALS ── */
+  .signals{background:var(--paper-2);border-left:4px solid var(--alert);padding:22px 28px 24px;margin-bottom:32px;display:grid;grid-template-columns:160px 1fr;gap:28px;align-items:start}
+  .signals .label{font-family:"Fraunces",serif;font-size:22px;font-style:italic;color:var(--alert);line-height:1.1;font-weight:500}
+  .signals .label small{display:block;font-family:"IBM Plex Mono",monospace;font-size:10px;font-style:normal;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:400}
+  .signals ol{list-style:none;counter-reset:sig;display:flex;flex-direction:column;gap:12px}
+  .signals li{counter-increment:sig;padding-left:32px;position:relative;font-size:14px;line-height:1.5}
+  .signals li::before{content:counter(sig,decimal-leading-zero);position:absolute;left:0;top:1px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--alert);font-weight:600}
+  .signals li b{font-weight:600;color:var(--ink)}
+  .signals li .n{font-family:"IBM Plex Mono",monospace;font-weight:500;color:var(--ink);background:rgba(185,74,60,0.08);padding:1px 6px;border-radius:2px}
+  .signals li.opp::before{color:var(--opp)}
+  .signals li.opp .n{background:rgba(45,95,76,0.08);color:var(--ink)}
+
+  /* ── KPI STRIP ── */
+  .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--ink);border-left:1px solid var(--ink);margin-bottom:40px}
+  .tile{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:14px 16px 16px;background:var(--paper);position:relative;min-height:122px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:background 0.15s}
+  .tile:hover{background:var(--paper-2)}
+  .tile .tile-lbl{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  .tile .tile-num{font-family:"Fraunces",serif;font-weight:500;font-size:34px;line-height:1;color:var(--ink);letter-spacing:-0.02em}
+  .tile .tile-num .unit{font-size:17px;color:var(--muted);font-weight:400;margin-left:2px}
+  .tile .tile-den{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted);margin-top:6px}
+  .tile .tile-delta{font-family:"IBM Plex Mono",monospace;font-size:10.5px;margin-top:2px}
+  .tile.alert{background:#F8EEEA}.tile.alert .tile-num{color:var(--alert)}
+  .tile.positive .tile-num{color:var(--positive)}
+  .tile.opp{background:#EAF1EC}.tile.opp .tile-num{color:var(--opp)}
+  .tile .flag{position:absolute;top:10px;right:12px;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:0.12em;font-weight:600}
+  .tile .flag.new{color:var(--opp)}
+  .tile .drill{position:absolute;bottom:6px;right:10px;font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--muted);letter-spacing:0.08em}
+
+  /* ── SECTION NAV ── */
+  .section-nav{position:sticky;top:0;background:var(--paper);border:1px solid var(--rule-strong);padding:8px 14px;margin-bottom:22px;display:flex;gap:4px;flex-wrap:wrap;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+  .section-nav a{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-2);text-decoration:none;padding:3px 7px;border:1px solid transparent;letter-spacing:0.03em}
+  .section-nav a:hover{background:var(--paper-2);border-color:var(--rule)}
+  .section-nav a.nv{color:var(--opp)}
+
+  /* ── SECTIONS ── */
+  section{margin-bottom:34px;scroll-margin-top:60px}
+  .sec-head{display:grid;grid-template-columns:48px 1fr auto auto;gap:16px;align-items:baseline;padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--rule-strong)}
+  .sec-num{font-family:"Fraunces",serif;font-style:italic;font-size:30px;color:var(--muted);font-weight:400;line-height:1}
+  .sec-num.new{color:var(--opp)}
+  .sec-title{font-family:"Fraunces",serif;font-size:22px;font-weight:500;letter-spacing:-0.01em;line-height:1.1}
+  .sec-title em{font-style:italic;color:var(--muted);font-weight:400;font-size:14px;margin-left:8px}
+  .sec-title .new-tag{background:var(--opp);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:0.14em;padding:2px 7px;font-weight:600;margin-left:10px;vertical-align:middle}
+  .sec-window{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+  .sec-toggle{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--accent);cursor:pointer;background:none;border:1px solid var(--accent);padding:3px 8px;letter-spacing:0.06em;text-transform:uppercase;transition:background 0.15s}
+  .sec-toggle:hover{background:var(--accent);color:var(--paper)}
+
+  .sec-body{display:grid;grid-template-columns:300px 1fr;gap:30px;align-items:start}
+  .sec-body.full{grid-template-columns:1fr}
+  .sec-headline{display:flex;flex-direction:column;gap:10px}
+  .headline-big{font-family:"Fraunces",serif;font-size:46px;line-height:0.95;font-weight:500;letter-spacing:-0.025em;color:var(--ink)}
+  .headline-big .unit{font-size:22px;color:var(--muted);font-weight:400}
+  .headline-big.alert{color:var(--alert)}.headline-big.positive{color:var(--positive)}.headline-big.opp{color:var(--opp)}
+  .headline-sub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);line-height:1.6}
+  .headline-sub b{color:var(--ink);font-weight:500}
+  .headline-note{font-size:12.5px;line-height:1.5;color:var(--ink-2);font-style:italic;padding-top:8px;border-top:1px solid var(--rule)}
+
+  /* ── CHARTS ── */
+  .chart-wrap{background:var(--paper);border:1px solid var(--rule);padding:14px 12px 8px 12px;margin-bottom:10px}
+  .chart-title{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+  .chart-title b{color:var(--ink);font-weight:600;letter-spacing:0.04em}
+  .chart-title .legend{display:flex;gap:12px;font-size:9.5px;text-transform:none;letter-spacing:0}
+  .chart-title .legend span{display:flex;align-items:center;gap:4px}
+  .chart-title .legend i{display:inline-block;width:14px;height:3px}
+  svg.chart{display:block;width:100%;height:auto}
+  svg.chart .axis{stroke:var(--rule-strong);stroke-width:0.7}
+  svg.chart .gridline{stroke:var(--rule);stroke-width:0.5;stroke-dasharray:2 3}
+  svg.chart text.lbl{fill:var(--muted);font-size:8.5px;font-family:"IBM Plex Mono",monospace}
+  svg.chart text.year-lbl{fill:var(--ink-2);font-size:9px;font-family:"IBM Plex Mono",monospace;font-weight:600;letter-spacing:0.06em}
+  svg.chart .year-bg{fill:var(--paper-3);opacity:0.55}
+  svg.chart .target-line{stroke:var(--alert);stroke-width:0.8;stroke-dasharray:3 3}
+
+  /* ── TABLES ── */
+  table.grid{border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:11px;width:100%;margin-top:4px}
+  table.grid th,table.grid td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--rule);vertical-align:middle}
+  table.grid th{font-weight:500;color:var(--muted);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;background:var(--paper-2);border-bottom:1px solid var(--rule-strong);white-space:nowrap}
+  table.grid th:first-child,table.grid td:first-child{text-align:left}
+  table.grid td.label-cell{font-family:"IBM Plex Sans",sans-serif;font-weight:500;color:var(--ink)}
+  table.grid td .den{color:var(--muted);font-size:10px;margin-left:3px}
+  table.grid td.pct{font-weight:500;color:var(--ink)}
+  table.grid td.pct.crit{color:var(--alert);font-weight:600}
+  table.grid td.pct.pos{color:var(--positive);font-weight:600}
+  table.grid td.pct.opp{color:var(--opp);font-weight:600}
+  table.grid td.low{color:var(--warn)}
+  table.grid td.low::after{content:"⚠";margin-left:4px;font-size:9px;color:var(--warn)}
+  table.grid td.nil{color:var(--muted);opacity:0.5}
+  table.grid tr.total td{border-top:2px solid var(--ink);background:var(--paper-2);font-weight:600;color:var(--ink)}
+  table.grid tr.age-hl td,table.grid th.cond-hl,table.grid td.cond-hl{background:var(--highlight)!important}
+  .scroll-tbl{max-height:340px;overflow-y:auto;border:1px solid var(--rule);background:var(--paper)}
+
+  .drill-body{display:none;margin-top:16px;padding:16px 20px;background:var(--paper-2);border:1px solid var(--rule)}
+  .drill-body.open{display:block}
+  .drill-body h4{font-family:"Fraunces",serif;font-size:14px;font-weight:500;font-style:italic;margin-bottom:10px;color:var(--ink)}
+
+  /* ── METHODS ── */
+  .methods{margin-top:40px;padding-top:22px;border-top:3px double var(--ink);font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.65;color:var(--muted);columns:2;column-gap:40px;column-rule:1px solid var(--rule)}
+  .methods h3{font-family:"Fraunces",serif;font-size:14px;font-weight:500;color:var(--ink);margin-bottom:8px;column-span:all;font-style:italic}
+  .methods h4{font-family:"IBM Plex Sans",sans-serif;font-size:11px;font-weight:600;color:var(--ink);margin:10px 0 4px;letter-spacing:0.02em;text-transform:uppercase;break-after:avoid}
+  .methods p{margin-bottom:8px}
+  .methods ul{padding-left:14px;margin-bottom:10px}
+  .methods li{margin-bottom:4px;break-inside:avoid}
+  .methods .flag-warn{color:var(--alert);font-weight:500}
+  .methods b{color:var(--ink)}
+
+  .inline-list{display:flex;flex-wrap:wrap;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:11px}
+  .inline-list span{padding:3px 8px;background:var(--paper-2);border:1px solid var(--rule)}
+  .inline-list span b{color:var(--ink);font-weight:600}
+  .inline-list span.hl{background:#FFF9E8;border-color:var(--warn)}
+  .footer{margin-top:28px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase}
+
+  @media print{body{background:white}.page{max-width:none;padding:24px}section{page-break-inside:avoid}.drill-body{display:block}.section-nav{display:none}}
+  @media (max-width:900px){.strip{grid-template-columns:repeat(2,1fr)}.sec-body{grid-template-columns:1fr}.signals{grid-template-columns:1fr}.methods{columns:1}.disclosure,.revision{grid-template-columns:1fr}.filters{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══ MASTHEAD ═══ -->
+  <div class="masthead">
+    <div class="kicker">Internal briefing · Confidential · Not for redistribution</div>
+    <h1>PreventScripts <em>Program Performance</em> Dashboard <span class="version">v3 · full-scope</span></h1>
+    <div class="meta">
+      <span><strong>Prepared for</strong> Brandi Harless, CEO</span>
+      <span><strong>Distribution</strong> David Moore (COO), Jay</span>
+      <span><strong>Report date</strong> 2026-04-21</span>
+      <span><strong>Data range</strong> 2023 – Apr 2026</span>
+    </div>
+  </div>
+
+  <!-- ═══ REVISION NOTE ═══ -->
+  <div class="revision">
+    <div class="v-tag">v3 · scope restored</div>
+    <p>
+      Restores age × chronic-condition small-multiples grids for every segmentable metric family (per original specification), adds dedicated sections for <b>Weight-Loss Outcomes</b>, <b>Blood-Sugar Outcomes</b>, <b>Lifestyle Plans &amp; Goal Tracking</b>, and <b>Weekly Survey Engagement</b>, and introduces a filter bar for Period · Age · Condition.
+    </p>
+  </div>
+
+  <!-- ═══ DATA-SOURCE DISCLOSURE ═══ -->
+  <div class="disclosure">
+    <div class="stamp">Data<br>source<br>notice</div>
+    <div>
+    <p>
+      <b>Chronic-condition cohorts are derived from patient self-report collected via the PreventScripts health-risk assessment instrument.</b> These cohort assignments have not been adjudicated against payer claims, provider EHR problem lists, ICD-10 diagnostic coding, or third-party clinical registries. Condition prevalence, cohort sizes, and all condition-segmented metrics should be interpreted as program-reported rather than clinically confirmed. Independent validation is required for payer negotiation, risk-adjustment modeling, or clinical attribution.
+    </p>
+    <p>
+      <b>Sex / biological gender is not currently captured in the PreventScripts production schema</b> (no <code>sex</code>, <code>gender</code>, or equivalent column on <code>users</code>, <code>assessment_attempts</code>, or related tables). Sex-stratified analysis cannot be produced from the current data source. Ethnicity is captured on <code>assessment_attempts</code> and is available as an alternative demographic dimension if required. Recommendation: add a sex field to the intake assessment for future cohort stratification.
+    </p>
+    </div>
+  </div>
+
+  <!-- ═══ FILTER BAR ═══ -->
+  <div class="filters" id="filters">
+    <div class="f-group">
+      <div class="f-label">Filter</div>
+      <div style="padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.04em;border-top:1px solid var(--rule)">SCOPE</div>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Period</div>
+      <div class="f-buttons" data-filter="year">
+        <button data-val="2024">2024</button>
+        <button data-val="2025">2025</button>
+        <button data-val="2026">2026 YTD</button>
+        <button data-val="all" class="active">All</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Age</div>
+      <div class="f-buttons" data-filter="age">
+        <button data-val="all" class="active">All</button>
+        <button data-val="&lt;50">&lt;50</button>
+        <button data-val="50-64">50–64</button>
+        <button data-val="65+">65+</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Condition (self-reported)</div>
+      <div class="f-buttons" data-filter="cond">
+        <button data-val="all" class="active">All</button>
+        <button data-val="htn">HTN</button>
+        <button data-val="t2dm">T2DM</button>
+        <button data-val="obesity">Obesity</button>
+        <button data-val="multi">Multi-morbid</button>
+      </div>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Sex</div>
+      <div class="f-buttons">
+        <button disabled title="Sex/gender is not captured in the PreventScripts production schema. Recommend adding this field to the intake assessment for future stratification.">Not captured</button>
+      </div>
+    </div>
+    <div class="filter-note">
+      <span>⚠ Sex filter disabled — field not present in source data. See Data Source Notice above.</span>
+      <span>Filters highlight matching rows/columns and do not recompute totals.</span>
+    </div>
+  </div>
+
+  <!-- ═══ SIGNALS ═══ -->
+  <div class="signals">
+    <div class="label">Five<br>signals<br>worth acting<br>on this month<small>Data-driven · not commentary</small></div>
+    <ol>
+      <li class="opp"><b>CPT 99445 (new for CY 2026) expands billable data-transmission cohort ~5×.</b> Avg ~64 billable patients/month combining 99445 (2–15 day) + 99454 (16+ day) vs ~15/month under 99454-only. Largest revenue-recovery lever on this dashboard.</li>
+      <li><b>99454 (16-day) compliance remains at <span class="n">2.5%</span> of active panel</b> vs 87% historical baseline. 22 patients logged 6–15 days in March — closest to threshold, highest-leverage intervention targets.</li>
+      <li><b>Patient targeting is intact — <span class="n">76.6%</span> rising-risk + <span class="n">76.0%</span> high-risk enrollment penetration.</b> 90-day retention holds at 91.9%. Cohort is the right cohort.</li>
+      <li class="opp"><b>Active lifestyle-plan coverage is strong: <span class="n">77.2%</span> (339/439).</b> But plan engagement is one-way: weekly-survey response rate is <span class="n">2.8%</span> all-time (388/14,003). Goals are set; progress tracking doesn't happen. This is an engagement-design problem, not a targeting problem.</li>
+      <li class="opp"><b>Weight-loss signal is real in the measurable sub-cohort.</b> Of 146 patients with 2+ weight readings in 180d, 58% lost some weight, <span class="n">20.5%</span> achieved ≥5% clinically-significant loss. 50–64 cohort shows cleanest result: avg -3.5% weight change, 23% achieved ≥5% loss.</li>
+    </ol>
+  </div>
+
+  <!-- ═══ KPI STRIP ═══ -->
+  <div class="strip" id="kpi-strip"></div>
+
+  <!-- ═══ SECTION NAV ═══ -->
+  <div class="section-nav">
+    <a href="#sec-1">01 · Assessments</a>
+    <a href="#sec-2">02 · Stratification</a>
+    <a href="#sec-3">03 · Enrollment</a>
+    <a href="#sec-4">04 · Churn</a>
+    <a href="#sec-5">05 · Usage</a>
+    <a href="#sec-6">06 · Billing</a>
+    <a href="#sec-7">07 · BP Control</a>
+    <a href="#sec-8" class="nv">08 · Weight Loss · NEW</a>
+    <a href="#sec-9" class="nv">09 · Blood Sugar · NEW</a>
+    <a href="#sec-10" class="nv">10 · Plans &amp; Goals · NEW</a>
+    <a href="#sec-11" class="nv">11 · Weekly Surveys · NEW</a>
+    <a href="#sec-12">12 · MA-750</a>
+  </div>
+
+  <!-- ═══ 1-4: condensed sections (details preserved from v2) ═══ -->
+
+  <section id="sec-1">
+    <div class="sec-head"><div class="sec-num">01</div><div class="sec-title">Health Assessments <em>completion funnel</em></div><div class="sec-window">Monthly · 2024-01 to 2026-04</div><button class="sec-toggle" onclick="toggleDrill('drill-1')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big positive" id="hl-assess-pct">82.9<span class="unit">%</span></div>
+        <div class="headline-sub" id="hl-assess-sub"></div>
+        <div class="headline-note">Completion-rate methodology changed in Dec '24. Pre-Dec '24 reads as 100% due to the platform not persisting "sent but not completed" rows at that time. Post-Dec '24 series is the apples-to-apples baseline.</div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title"><b>Sent · completed · % complete</b>
+          <div class="legend"><span><i style="background:var(--ink)"></i>Sent</span><span><i style="background:var(--positive)"></i>Completed</span><span><i style="background:var(--accent);height:2px"></i>% complete</span></div>
+        </div>
+        <svg class="chart" id="chart-assess" viewBox="0 0 900 240"></svg>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-1"><h4>Monthly detail</h4><div class="scroll-tbl"><table class="grid" id="tbl-assess"><thead><tr><th>Month</th><th>Sent</th><th>Completed</th><th>% Complete</th><th>Notes</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <section id="sec-2">
+    <div class="sec-head"><div class="sec-num">02</div><div class="sec-title">Patient Stratification <em>risk tier × age · self-reported conditions</em></div><div class="sec-window">As of 2026-04-21</div><button class="sec-toggle" onclick="toggleDrill('drill-2')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big positive">76.6<span class="unit">%</span></div>
+        <div class="headline-sub"><b>Rising-risk</b> RPM penetration<br><b>76.0%</b> high-risk (79/104)<br><b>65.3%</b> low-risk (128/196)</div>
+        <div class="headline-note">Program is disproportionately reaching the segments that warrant RPM. Risk assignment uses self-reported conditions + last BP (see Data Source Notice).</div>
+      </div>
+      <div>
+        <table class="grid" id="tbl-strat-age">
+          <thead><tr><th>Age group</th><th>Low</th><th>Rising</th><th>High</th><th>Total</th><th>% High-risk</th></tr></thead>
+          <tbody>
+            <tr data-age="&lt;50"><td class="label-cell">&lt;50</td><td class="num">92</td><td class="num">191</td><td class="num">42</td><td class="num">325</td><td class="num pct">12.9%</td></tr>
+            <tr data-age="50-64"><td class="label-cell">50–64</td><td class="num">27</td><td class="num">41</td><td class="num">36</td><td class="num">104</td><td class="num pct crit">34.6%</td></tr>
+            <tr data-age="65+"><td class="label-cell">65+ ⚠ low-sample</td><td class="num">9</td><td class="num">0</td><td class="num">1</td><td class="num low">10</td><td class="num">—</td></tr>
+            <tr class="total"><td class="label-cell">Active RPM total</td><td class="num">128</td><td class="num">232</td><td class="num">79</td><td class="num">439</td><td class="num pct">18.0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-2">
+      <h4>Reported condition prevalence (self-reported · active RPM)</h4>
+      <div class="inline-list">
+        <span>Hypertension <b>119</b> (27%)</span>
+        <span>Obesity (BMI≥30) <b>294</b> (67%)</span>
+        <span>T2 Diabetes <b>61</b> (14%)</span>
+        <span>Hyperlipidemia <b>75</b> (17%)</span>
+        <span>Multi-morbid (2+) <b>106</b> (24%)</span>
+        <span>COPD <b>15</b></span>
+        <span>CKD <b>5</b></span>
+        <span>CHF <b>4</b></span>
+        <span class="hl">Depression — not in taxonomy</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-3">
+    <div class="sec-head"><div class="sec-num">03</div><div class="sec-title">RPM Enrollment <em>active panel · 34-month flow</em></div><div class="sec-window">Jul '23 – Apr '26</div><button class="sec-toggle" onclick="toggleDrill('drill-3')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big" id="hl-enr-panel">439</div>
+        <div class="headline-sub" id="hl-enr-sub"></div>
+        <div class="headline-note">Mar–Apr '25 acquisition sprint (79 new in one month) is now entering 12-month tenure. Growth velocity moderated to ~15/mo since Sep '25.</div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title"><b>Active panel + flow</b>
+          <div class="legend"><span><i style="background:var(--accent)"></i>Active</span><span><i style="background:var(--positive)"></i>New</span><span><i style="background:var(--alert)"></i>Un-enrolled</span></div>
+        </div>
+        <svg class="chart" id="chart-enr" viewBox="0 0 900 240"></svg>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-3"><h4>Monthly enrollment detail</h4><div class="scroll-tbl"><table class="grid" id="tbl-enr"><thead><tr><th>Month</th><th>Active</th><th>New</th><th>Unenrolled</th><th>Net</th><th>Churn %</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <section id="sec-4">
+    <div class="sec-head"><div class="sec-num">04</div><div class="sec-title">Churn &amp; Retention <em>vs 2.08% target</em></div><div class="sec-window">Monthly + cohort</div><button class="sec-toggle" onclick="toggleDrill('drill-4')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big positive" id="hl-churn-pct">0.9<span class="unit">%</span></div>
+        <div class="headline-sub" id="hl-churn-sub"></div>
+        <div class="headline-note">Oct '24 spike (18.7%) was a one-time data reconciliation. Underlying monthly churn has held in 1–3% since.</div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title"><b>Monthly churn</b>
+          <div class="legend"><span><i style="background:var(--alert)"></i>Rate</span><span><i style="border-top:1.5px dashed var(--alert);height:0"></i>Target</span></div>
+        </div>
+        <svg class="chart" id="chart-churn" viewBox="0 0 900 200"></svg>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-4">
+      <h4>Retention by cohort tenure</h4>
+      <table class="grid">
+        <thead><tr><th>Milestone</th><th>Cohort</th><th>Retained</th><th>Retention</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">30-day</td><td class="num">585</td><td class="num">571</td><td class="num pct pos">97.6%</td></tr>
+          <tr><td class="label-cell">90-day</td><td class="num">556</td><td class="num">511</td><td class="num pct pos">91.9%</td></tr>
+          <tr><td class="label-cell">180-day</td><td class="num">503</td><td class="num">422</td><td class="num pct">83.9%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ 5. USAGE — AGE × CONDITION GRID RESTORED ═══ -->
+  <section id="sec-5">
+    <div class="sec-head"><div class="sec-num">05</div><div class="sec-title">Usage <em>≥1 reading in 30d · age × condition · self-reported</em></div><div class="sec-window">Rolling 30d</div><button class="sec-toggle" onclick="toggleDrill('drill-5')">Drill ↓</button></div>
+    <div class="sec-body full">
+      <div class="headline-sub" style="margin-bottom:12px">Overall: <b>15.7%</b> of active RPM panel (69/439) logged ≥1 reading in the last 30 days. Cells show active-in-30d ÷ cohort size. Selected age row / condition column is highlighted based on filter bar. Low-sample cells (n&lt;20) flagged ⚠.</div>
+      <table class="grid" id="tbl-usage-grid">
+        <thead><tr>
+          <th>Age</th>
+          <th data-cond="htn">Hypertension</th><th data-cond="t2dm">T2 Diabetes</th>
+          <th data-cond="chf">CHF</th><th data-cond="copd">COPD</th>
+          <th data-cond="ckd">CKD</th><th data-cond="obesity">Obesity</th>
+          <th data-cond="hld">Hyperlipidemia</th><th data-cond="multi">Multi-morbid</th>
+          <th>All patients</th>
+        </tr></thead>
+        <tbody>
+          <tr data-age="&lt;50">
+            <td class="label-cell">&lt;50</td>
+            <td class="num pct" data-cond="htn">11.8%<span class="den">8/68</span></td>
+            <td class="num pct" data-cond="t2dm">17.1%<span class="den">6/35</span></td>
+            <td class="num nil" data-cond="chf">—<span class="den">0/0</span></td>
+            <td class="num low" data-cond="copd">50.0%<span class="den">2/4</span></td>
+            <td class="num low" data-cond="ckd">0.0%<span class="den">0/4</span></td>
+            <td class="num pct" data-cond="obesity">16.3%<span class="den">36/221</span></td>
+            <td class="num pct" data-cond="hld">14.0%<span class="den">6/43</span></td>
+            <td class="num pct" data-cond="multi">16.1%<span class="den">10/62</span></td>
+            <td class="num pct">15.7%<span class="den">51/325</span></td>
+          </tr>
+          <tr data-age="50-64">
+            <td class="label-cell">50–64</td>
+            <td class="num pct" data-cond="htn">22.0%<span class="den">11/50</span></td>
+            <td class="num pct" data-cond="t2dm">15.4%<span class="den">4/26</span></td>
+            <td class="num low" data-cond="chf">50.0%<span class="den">2/4</span></td>
+            <td class="num low" data-cond="copd">0.0%<span class="den">0/10</span></td>
+            <td class="num low" data-cond="ckd">0.0%<span class="den">0/1</span></td>
+            <td class="num pct" data-cond="obesity">16.7%<span class="den">12/72</span></td>
+            <td class="num pct" data-cond="hld">19.4%<span class="den">6/31</span></td>
+            <td class="num pct" data-cond="multi">18.6%<span class="den">8/43</span></td>
+            <td class="num pct">15.4%<span class="den">16/104</span></td>
+          </tr>
+          <tr data-age="65+">
+            <td class="label-cell">65+ ⚠</td>
+            <td class="num low" data-cond="htn">50.0%<span class="den">1/2</span></td>
+            <td class="num nil" data-cond="t2dm">—<span class="den">0/0</span></td>
+            <td class="num nil" data-cond="chf">—<span class="den">0/0</span></td>
+            <td class="num low" data-cond="copd">100.0%<span class="den">1/1</span></td>
+            <td class="num nil" data-cond="ckd">—<span class="den">0/0</span></td>
+            <td class="num low" data-cond="obesity">100.0%<span class="den">1/1</span></td>
+            <td class="num low" data-cond="hld">100.0%<span class="den">1/1</span></td>
+            <td class="num low" data-cond="multi">100.0%<span class="den">1/1</span></td>
+            <td class="num low">20.0%<span class="den">2/10</span></td>
+          </tr>
+          <tr class="total">
+            <td class="label-cell">All ages</td>
+            <td class="num pct" data-cond="htn">16.8%<span class="den">20/119</span></td>
+            <td class="num pct" data-cond="t2dm">16.4%<span class="den">10/61</span></td>
+            <td class="num low" data-cond="chf">50.0%<span class="den">2/4</span></td>
+            <td class="num pct" data-cond="copd">20.0%<span class="den">3/15</span></td>
+            <td class="num low" data-cond="ckd">0.0%<span class="den">0/5</span></td>
+            <td class="num pct" data-cond="obesity">16.7%<span class="den">49/294</span></td>
+            <td class="num pct" data-cond="hld">17.3%<span class="den">13/75</span></td>
+            <td class="num pct" data-cond="multi">17.9%<span class="den">19/106</span></td>
+            <td class="num pct">15.7%<span class="den">69/439</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="headline-sub" style="margin-top:10px"><b>Finding:</b> Activity is remarkably flat across conditions (14–22%) and ages. Engagement is a program-wide problem, not cohort-specific. Structural intervention is indicated.</div>
+    </div>
+    <div class="drill-body" id="drill-5">
+      <h4>Reading-tier distribution · monthly</h4>
+      <div class="chart-wrap">
+        <div class="chart-title"><b>Patients with readings by tier</b>
+          <div class="legend"><span><i style="background:#D4CFC4"></i>1 day</span><span><i style="background:var(--opp)"></i>2–15 days</span><span><i style="background:var(--accent)"></i>16+ days</span></div>
+        </div>
+        <svg class="chart" id="chart-usage" viewBox="0 0 900 260"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 6. BILLING ═══ -->
+  <section id="sec-6">
+    <div class="sec-head"><div class="sec-num">06</div><div class="sec-title">Data-Transmission Billing <em>99445 (NEW '26) + 99454 · age × condition</em></div><div class="sec-window">CY 2026 rules applied to 28-mo history</div><button class="sec-toggle" onclick="toggleDrill('drill-6')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big opp">+4.8×</div>
+        <div class="headline-sub">
+          <b>Billable-cohort expansion</b> under 99445 + 99454 vs 99454-only<br>
+          Jan '26: <b>81</b> billable · <b>4.5×</b><br>
+          Feb '26: <b>73</b> · <b>4.6×</b><br>
+          Mar '26: <b>64</b> · <b>5.8×</b>
+        </div>
+        <div class="headline-note" style="color:var(--opp)">CPT 99445 (effective CY 2026) covers 2–15 unique days of device-data transmission. Prior to 2026 this cohort had no billing pathway. Largest revenue change on the dashboard.</div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title"><b>99454 + 99445 combined · monthly</b>
+          <div class="legend"><span><i style="background:var(--accent)"></i>99454 (16+)</span><span><i style="background:var(--opp)"></i>+99445 (2–15) · '26</span></div>
+        </div>
+        <svg class="chart" id="chart-bill" viewBox="0 0 900 220"></svg>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-6"><h4>Monthly billable detail</h4><div class="scroll-tbl"><table class="grid" id="tbl-bill"><thead><tr><th>Month</th><th>99454</th><th>99445</th><th>Total</th><th>Δ</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ═══ 7. BP CONTROL — AGE × CONDITION ═══ -->
+  <section id="sec-7">
+    <div class="sec-head"><div class="sec-num">07</div><div class="sec-title">Blood Pressure Outcomes <em>age × condition · last reading &lt; target</em></div><div class="sec-window">Rolling 90d</div><button class="sec-toggle" onclick="toggleDrill('drill-7')">Drill ↓</button></div>
+    <div class="sec-body full">
+      <div class="headline-sub" style="margin-bottom:12px">Of the 19 hypertensive patients with a BP reading in the last 90 days, <b>89.5%</b> had their last systolic under 140. Reading-coverage is only <b>16%</b> of the HTN cohort — outcome measurement is engagement-gated. Grid shows: <em>last BP &lt; 140/90 ÷ patients with any BP reading in 90d</em>.</div>
+      <table class="grid" id="tbl-bp-grid">
+        <thead><tr>
+          <th>Age</th>
+          <th data-cond="htn">HTN</th><th data-cond="t2dm">T2DM</th>
+          <th data-cond="obesity">Obesity</th><th data-cond="hld">Hyperlipidemia</th>
+          <th data-cond="multi">Multi-morbid</th><th>All w/ BP</th>
+        </tr></thead>
+        <tbody>
+          <tr data-age="&lt;50"><td class="label-cell">&lt;50</td>
+            <td class="num low" data-cond="htn">77.8%<span class="den">7/9</span></td>
+            <td class="num low" data-cond="t2dm">100%<span class="den">4/4</span></td>
+            <td class="num pct" data-cond="obesity">90.0%<span class="den">27/30</span></td>
+            <td class="num low" data-cond="hld">85.7%<span class="den">6/7</span></td>
+            <td class="num low" data-cond="multi">87.5%<span class="den">7/8</span></td>
+            <td class="num pct pos">88.7%<span class="den">39/44</span></td></tr>
+          <tr data-age="50-64"><td class="label-cell">50–64</td>
+            <td class="num low" data-cond="htn">90.0%<span class="den">9/10</span></td>
+            <td class="num low" data-cond="t2dm">66.7%<span class="den">4/6</span></td>
+            <td class="num pct" data-cond="obesity">85.7%<span class="den">18/21</span></td>
+            <td class="num low" data-cond="hld">75.0%<span class="den">6/8</span></td>
+            <td class="num low" data-cond="multi">77.8%<span class="den">7/9</span></td>
+            <td class="num pct pos">82.6%<span class="den">19/23</span></td></tr>
+          <tr data-age="65+"><td class="label-cell">65+ ⚠</td>
+            <td class="num nil" data-cond="htn">—<span class="den">0/0</span></td>
+            <td class="num nil" data-cond="t2dm">—<span class="den">0/0</span></td>
+            <td class="num low" data-cond="obesity">100%<span class="den">1/1</span></td>
+            <td class="num low" data-cond="hld">100%<span class="den">1/1</span></td>
+            <td class="num low" data-cond="multi">100%<span class="den">1/1</span></td>
+            <td class="num low">100%<span class="den">2/2</span></td></tr>
+          <tr class="total"><td class="label-cell">All ages</td>
+            <td class="num pct pos" data-cond="htn">89.5%<span class="den">17/19</span></td>
+            <td class="num low" data-cond="t2dm">80.0%<span class="den">8/10</span></td>
+            <td class="num pct pos" data-cond="obesity">88.5%<span class="den">46/52</span></td>
+            <td class="num pct" data-cond="hld">81.2%<span class="den">13/16</span></td>
+            <td class="num pct" data-cond="multi">83.3%<span class="den">15/18</span></td>
+            <td class="num pct pos">89.5%<span class="den">60/69</span></td></tr>
+        </tbody>
+      </table>
+      <div class="headline-sub" style="margin-top:10px"><b>Read this as:</b> BP control looks strong in every measurable cohort — but the measurable cohort is small. The clinical signal is fine; the engagement signal is the constraint.</div>
+    </div>
+    <div class="drill-body" id="drill-7">
+      <h4>BP control trend · % of readings under threshold</h4>
+      <div class="chart-wrap">
+        <div class="chart-title"><b>Monthly · % of readings under clinical thresholds</b>
+          <div class="legend"><span><i style="background:var(--positive)"></i>&lt;140/90</span><span><i style="background:var(--accent)"></i>&lt;130/80</span></div>
+        </div>
+        <svg class="chart" id="chart-bp" viewBox="0 0 900 220"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 8. WEIGHT LOSS — NEW ═══ -->
+  <section id="sec-8">
+    <div class="sec-head"><div class="sec-num new">08</div><div class="sec-title">Weight-Loss Outcomes <span class="new-tag">NEW</span><em>age × condition · 180-day change</em></div><div class="sec-window">Rolling 180d · 2+ readings</div><button class="sec-toggle" onclick="toggleDrill('drill-8')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big positive">58<span class="unit">%</span></div>
+        <div class="headline-sub">
+          <b>Lost any weight</b> over 180 days<br>
+          <b>85 of 146</b> patients with ≥2 readings<br>
+          <b>32.2%</b> lost ≥3%<br>
+          <b>20.5%</b> lost ≥5% <em style="color:var(--positive)">(clinically significant)</em><br>
+          <b>6.8%</b> lost ≥10%
+        </div>
+        <div class="headline-note">Clinically-significant weight loss (≥5%) is the standard threshold for meaningful metabolic benefit. The 50–64 cohort shows the cleanest signal: avg -3.5% change across 30 patients. Large standard deviation on &lt;50 suggests unit-entry inconsistency in a few records — flagged for data QC.</div>
+      </div>
+      <div>
+        <table class="grid" id="tbl-weight-grid">
+          <thead><tr>
+            <th>Age</th>
+            <th data-cond="htn">HTN</th><th data-cond="t2dm">T2DM</th>
+            <th data-cond="obesity">Obesity</th><th data-cond="multi">Multi-morbid</th>
+            <th>All w/ weight<br><em style="font-weight:400;color:var(--muted)">lost ≥5%</em></th>
+          </tr></thead>
+          <tbody>
+            <tr data-age="&lt;50"><td class="label-cell">&lt;50</td>
+              <td class="num low" data-cond="htn">38%<span class="den">6/16</span></td>
+              <td class="num low" data-cond="t2dm">75%<span class="den">6/8</span></td>
+              <td class="num pct" data-cond="obesity">70%<span class="den">48/69</span></td>
+              <td class="num pct" data-cond="multi">—</td>
+              <td class="num pct">66%<span class="den">64/97</span><br><span class="den">20% lost ≥5%</span></td></tr>
+            <tr data-age="50-64"><td class="label-cell">50–64</td>
+              <td class="num low" data-cond="htn">67%<span class="den">10/15</span></td>
+              <td class="num low" data-cond="t2dm">63%<span class="den">5/8</span></td>
+              <td class="num pct" data-cond="obesity">64%<span class="den">14/22</span></td>
+              <td class="num pct" data-cond="multi">—</td>
+              <td class="num pct pos">67%<span class="den">20/30</span><br><span class="den">23% lost ≥5%</span></td></tr>
+            <tr data-age="65+"><td class="label-cell">65+ ⚠</td>
+              <td class="num nil" data-cond="htn">—<span class="den">0/1</span></td>
+              <td class="num nil" data-cond="t2dm">—<span class="den">0/0</span></td>
+              <td class="num low" data-cond="obesity">0%<span class="den">0/1</span></td>
+              <td class="num nil" data-cond="multi">—</td>
+              <td class="num low">33%<span class="den">1/3</span></td></tr>
+            <tr class="total"><td class="label-cell">All ages</td>
+              <td class="num pct" data-cond="htn">50%<span class="den">16/32</span></td>
+              <td class="num low" data-cond="t2dm">69%<span class="den">11/16</span></td>
+              <td class="num pct pos" data-cond="obesity">68%<span class="den">62/92</span></td>
+              <td class="num pct" data-cond="multi">—</td>
+              <td class="num pct pos">58%<span class="den">85/146</span><br><span class="den">20.5% lost ≥5%</span></td></tr>
+          </tbody>
+        </table>
+        <div class="headline-sub" style="margin-top:10px;font-size:10.5px">
+          <b>Coverage:</b> 146 of 439 active RPM (33%) have ≥2 weight readings in 180d. Of the obesity cohort (n=294), 92 (31%) have measurable data — the remaining 202 are unmeasured.
+        </div>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-8">
+      <h4>Weight-change distribution · detail</h4>
+      <table class="grid">
+        <thead><tr><th>Threshold</th><th>All ages n=146</th><th>&lt;50 n=97</th><th>50–64 n=30</th><th>65+ n=3 ⚠</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">Lost any weight</td><td class="num pct">58.2% (85)</td><td class="num pct">66.0% (64)</td><td class="num pct">66.7% (20)</td><td class="num low">33% (1)</td></tr>
+          <tr><td class="label-cell">Lost ≥3%</td><td class="num pct">32.2% (47)</td><td class="num pct">—</td><td class="num pct">—</td><td class="num low">—</td></tr>
+          <tr><td class="label-cell">Lost ≥5% (clinical)</td><td class="num pct pos">20.5% (30)</td><td class="num pct">19.6% (19)</td><td class="num pct pos">23.3% (7)</td><td class="num low">0% (0)</td></tr>
+          <tr><td class="label-cell">Lost ≥10%</td><td class="num pct">6.8% (10)</td><td class="num pct">7.2% (7)</td><td class="num pct">10.0% (3)</td><td class="num low">0% (0)</td></tr>
+          <tr><td class="label-cell">Avg % change</td><td class="num" style="color:var(--warn)">+6.4%<span class="den">⚠ outliers</span></td><td class="num" style="color:var(--warn)">+4.3%<span class="den">⚠</span></td><td class="num pct pos">−3.5%</td><td class="num low">+211%<span class="den">⚠</span></td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10.5px">⚠ Average-percent-change cells inflated by 2 suspected unit-entry errors in &lt;50 cohort and 1 in 65+. Median is a more reliable central-tendency measure for the &lt;50 cohort; request engineering add an input validator (lb range 50–500).</p>
+    </div>
+  </section>
+
+  <!-- ═══ 9. BLOOD SUGAR — NEW ═══ -->
+  <section id="sec-9">
+    <div class="sec-head"><div class="sec-num new">09</div><div class="sec-title">Blood-Sugar Outcomes <span class="new-tag">NEW</span><em>T2DM + pre-diabetes cohorts · 90-day glucose</em></div><div class="sec-window">Rolling 90d</div><button class="sec-toggle" onclick="toggleDrill('drill-9')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big" id="hl-bs-pct">50<span class="unit">%</span></div>
+        <div class="headline-sub">
+          <b>T2DM patients controlled</b> (avg glucose ≤140 mg/dL)<br>
+          <b>7 of 14</b> with measurable readings<br>
+          <b>1 crisis reading</b> &gt; 300 mg/dL · outreach indicated<br><br>
+          <b>⚠ Coverage: 23%</b> of T2DM cohort (14/61) has any glucose reading in 90d
+        </div>
+        <div class="headline-note">Blood-sugar reporting is heavily engagement-gated. Of 61 self-reported T2DM patients, only 14 logged a fingerstick reading in 90 days. No HbA1c data in schema — fingerstick glucose is the only available signal. True glycemic control cannot be inferred from this panel.</div>
+      </div>
+      <div>
+        <table class="grid" id="tbl-bs-grid">
+          <thead><tr>
+            <th>Age</th>
+            <th data-cond="t2dm">T2DM cohort</th>
+            <th>With readings</th>
+            <th>Coverage</th>
+            <th>Controlled ≤140</th>
+            <th>Crisis &gt;300</th>
+          </tr></thead>
+          <tbody>
+            <tr data-age="&lt;50"><td class="label-cell">&lt;50</td>
+              <td class="num" data-cond="t2dm">35</td>
+              <td class="num low">5</td>
+              <td class="num pct crit">14.3%</td>
+              <td class="num low">3 / 5</td>
+              <td class="num low">0</td></tr>
+            <tr data-age="50-64"><td class="label-cell">50–64</td>
+              <td class="num" data-cond="t2dm">26</td>
+              <td class="num low">5</td>
+              <td class="num pct crit">19.2%</td>
+              <td class="num low">2 / 5</td>
+              <td class="num low">1</td></tr>
+            <tr data-age="65+"><td class="label-cell">65+ ⚠</td>
+              <td class="num nil" data-cond="t2dm">0</td>
+              <td class="num nil">0</td>
+              <td class="num nil">—</td>
+              <td class="num nil">—</td>
+              <td class="num nil">—</td></tr>
+            <tr class="total"><td class="label-cell">All T2DM</td>
+              <td class="num" data-cond="t2dm">61</td>
+              <td class="num">14</td>
+              <td class="num pct crit">23.0%</td>
+              <td class="num pct">7 / 14 (50%)</td>
+              <td class="num low">1</td></tr>
+            <tr><td class="label-cell" style="color:var(--muted)">Pre-Diabetes cohort</td>
+              <td class="num">49</td>
+              <td class="num low">3</td>
+              <td class="num pct crit">6.1%</td>
+              <td class="num low">3 / 3</td>
+              <td class="num nil">0</td></tr>
+          </tbody>
+        </table>
+        <div class="headline-sub" style="margin-top:10px;font-size:10.5px">
+          <b>Priority action:</b> device-reconnect and outreach to the 47 T2DM patients with zero readings in 90 days. Blood-sugar engagement is the weakest signal of any outcome metric on this dashboard.
+        </div>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-9">
+      <h4>Cross-cohort glucose readings · detail</h4>
+      <table class="grid">
+        <thead><tr><th>Condition cohort</th><th>Patients reading 90d</th><th>Avg glucose</th><th>Elevated &gt;180</th><th>Controlled ≤140</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">T2 Diabetes</td><td class="num">14</td><td class="num">147 mg/dL</td><td class="num">3</td><td class="num pct">7 (50%)</td></tr>
+          <tr><td class="label-cell">Pre-Diabetes</td><td class="num low">3</td><td class="num">102 mg/dL</td><td class="num">0</td><td class="num low">3 (100%)</td></tr>
+          <tr><td class="label-cell">Other / None indicated</td><td class="num">10</td><td class="num">116 mg/dL</td><td class="num">0</td><td class="num pct">8 (80%)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ 10. PLANS & GOALS — NEW ═══ -->
+  <section id="sec-10">
+    <div class="sec-head"><div class="sec-num new">10</div><div class="sec-title">Lifestyle Plans &amp; Goal Tracking <span class="new-tag">NEW</span><em>active-plan coverage · goal distribution</em></div><div class="sec-window">Current snapshot</div><button class="sec-toggle" onclick="toggleDrill('drill-10')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big positive">77<span class="unit">%</span></div>
+        <div class="headline-sub">
+          <b>339 of 439</b> active RPM patients with an active plan<br>
+          <b>7 goal categories</b> · avg motivation 3.6 / 5<br>
+          <b>Top goal:</b> Move More (123 · 36%)<br>
+          <b>Next:</b> Drink More Water (104 · 31%)
+        </div>
+        <div class="headline-note">Plan-adoption is strong across the panel — the acquisition / onboarding flow is successfully landing a behavior goal with most patients. The engagement gap is on the <em>tracking</em> side (see §11 Weekly Surveys).</div>
+      </div>
+      <div>
+        <table class="grid" id="tbl-plan-grid">
+          <thead><tr>
+            <th>Age</th>
+            <th>Active plan coverage</th>
+            <th data-cond="htn">HTN</th>
+            <th data-cond="t2dm">T2DM</th>
+            <th data-cond="obesity">Obesity</th>
+            <th data-cond="hld">Hyperlipidemia</th>
+          </tr></thead>
+          <tbody>
+            <tr data-age="&lt;50"><td class="label-cell">&lt;50</td>
+              <td class="num pct pos">80%<span class="den">260/325</span></td>
+              <td class="num pct" data-cond="htn">78%<span class="den">53/68</span></td>
+              <td class="num pct" data-cond="t2dm">74%<span class="den">26/35</span></td>
+              <td class="num pct" data-cond="obesity">79%<span class="den">175/221</span></td>
+              <td class="num pct" data-cond="hld">—</td></tr>
+            <tr data-age="50-64"><td class="label-cell">50–64</td>
+              <td class="num pct pos">69%<span class="den">72/104</span></td>
+              <td class="num pct" data-cond="htn">76%<span class="den">38/50</span></td>
+              <td class="num pct" data-cond="t2dm">73%<span class="den">19/26</span></td>
+              <td class="num pct" data-cond="obesity">65%<span class="den">47/72</span></td>
+              <td class="num pct" data-cond="hld">—</td></tr>
+            <tr data-age="65+"><td class="label-cell">65+ ⚠</td>
+              <td class="num low">70%<span class="den">7/10</span></td>
+              <td class="num low" data-cond="htn">100%<span class="den">1/1</span></td>
+              <td class="num nil" data-cond="t2dm">—</td>
+              <td class="num low" data-cond="obesity">100%<span class="den">1/1</span></td>
+              <td class="num nil" data-cond="hld">—</td></tr>
+            <tr class="total"><td class="label-cell">All ages</td>
+              <td class="num pct pos">77%<span class="den">339/439</span></td>
+              <td class="num pct" data-cond="htn">77%<span class="den">92/119</span></td>
+              <td class="num pct" data-cond="t2dm">74%<span class="den">45/61</span></td>
+              <td class="num pct" data-cond="obesity">76%<span class="den">223/294</span></td>
+              <td class="num pct" data-cond="hld">—</td></tr>
+          </tbody>
+        </table>
+        <div class="headline-sub" style="margin-top:10px">
+          <b>Coverage is evenly distributed across conditions</b> (74–77%). No cohort is being under-served on initial goal-setting. The lever is post-plan engagement, not initial plan adoption.
+        </div>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-10">
+      <h4>Active-goal distribution · condition cross-tab</h4>
+      <table class="grid">
+        <thead><tr><th>Goal</th><th>Active plans</th><th>% of all</th><th data-cond="htn">HTN</th><th data-cond="t2dm">T2DM</th><th data-cond="obesity">Obesity</th><th data-cond="hld">HLD</th><th>Motivation (1-5)</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">Move More</td><td class="num">123</td><td class="num pct">36.3%</td><td class="num" data-cond="htn">29</td><td class="num" data-cond="t2dm">12</td><td class="num" data-cond="obesity">79</td><td class="num" data-cond="hld">21</td><td class="num">3.6</td></tr>
+          <tr><td class="label-cell">Drink More Water</td><td class="num">104</td><td class="num pct">30.7%</td><td class="num" data-cond="htn">28</td><td class="num" data-cond="t2dm">19</td><td class="num" data-cond="obesity">74</td><td class="num" data-cond="hld">19</td><td class="num">3.7</td></tr>
+          <tr><td class="label-cell">Eat Less Sugar</td><td class="num">44</td><td class="num pct">13.0%</td><td class="num" data-cond="htn">11</td><td class="num" data-cond="t2dm">4</td><td class="num" data-cond="obesity">28</td><td class="num" data-cond="hld">4</td><td class="num">3.7</td></tr>
+          <tr><td class="label-cell">Eat More Vegetables</td><td class="num">42</td><td class="num pct">12.4%</td><td class="num" data-cond="htn">12</td><td class="num" data-cond="t2dm">4</td><td class="num" data-cond="obesity">27</td><td class="num" data-cond="hld">6</td><td class="num">3.6</td></tr>
+          <tr><td class="label-cell">Eat More Fruits</td><td class="num">12</td><td class="num pct">3.5%</td><td class="num" data-cond="htn">4</td><td class="num" data-cond="t2dm">1</td><td class="num" data-cond="obesity">7</td><td class="num" data-cond="hld">2</td><td class="num">3.5</td></tr>
+          <tr><td class="label-cell">Eat Less Salt</td><td class="num">8</td><td class="num pct">2.4%</td><td class="num" data-cond="htn">6</td><td class="num" data-cond="t2dm">3</td><td class="num" data-cond="obesity">5</td><td class="num" data-cond="hld">3</td><td class="num">3.8</td></tr>
+          <tr><td class="label-cell">Cut back on Tobacco</td><td class="num">6</td><td class="num pct">1.8%</td><td class="num" data-cond="htn">2</td><td class="num" data-cond="t2dm">2</td><td class="num" data-cond="obesity">3</td><td class="num" data-cond="hld">1</td><td class="num">3.4</td></tr>
+          <tr class="total"><td class="label-cell">All active plans</td><td class="num">339</td><td class="num">100%</td><td class="num" data-cond="htn">92</td><td class="num" data-cond="t2dm">45</td><td class="num" data-cond="obesity">223</td><td class="num" data-cond="hld">—</td><td class="num">3.6</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10.5px">
+        <b>Observation worth noting:</b> HTN patients chose "Eat Less Salt" at 6.5% — below its prevalence in the general plan mix. Given salt restriction is front-line non-pharm therapy for HTN, this suggests a content / prompt / curriculum opportunity: surface salt-reduction more aggressively during plan selection for HTN-cohort patients.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ 11. WEEKLY SURVEYS — NEW ═══ -->
+  <section id="sec-11">
+    <div class="sec-head"><div class="sec-num new">11</div><div class="sec-title">Weekly Survey Engagement <span class="new-tag">NEW</span><em>response rate · progress sentiment</em></div><div class="sec-window">Cumulative + rolling 90d</div><button class="sec-toggle" onclick="toggleDrill('drill-11')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big alert">2.8<span class="unit">%</span></div>
+        <div class="headline-sub">
+          <b>Weekly-survey response rate</b> (all-time)<br>
+          <b>388 attempted</b> of <b>14,003 sent</b><br>
+          Last 90d: <b>0.5%</b> (22 attempted of 4,171 sent)<br><br>
+          Of respondents: <b>31%</b> "Pretty Well / Wonderful"<br>
+          <b>33%</b> "Not Great / Terrible"
+        </div>
+        <div class="headline-note" style="color:var(--alert)">The weekly check-in mechanism is effectively non-functional as a data-collection channel. 97%+ of surveys go unanswered. Among the narrow subset who do respond, sentiment is mixed — about 1 in 3 report struggle. Consider redesigning delivery (in-app vs. SMS, timing, frequency) or replacing with passive telemetry.</div>
+      </div>
+      <div>
+        <table class="grid" id="tbl-survey-grid">
+          <thead><tr>
+            <th>Age</th>
+            <th>Ever responded</th>
+            <th>Response rate</th>
+            <th data-cond="htn">HTN</th>
+            <th data-cond="t2dm">T2DM</th>
+            <th data-cond="obesity">Obesity</th>
+          </tr></thead>
+          <tbody>
+            <tr data-age="&lt;50"><td class="label-cell">&lt;50</td>
+              <td class="num">84</td><td class="num pct">26%<span class="den">84/325</span></td>
+              <td class="num pct" data-cond="htn">—</td>
+              <td class="num pct" data-cond="t2dm">—</td>
+              <td class="num pct" data-cond="obesity">—</td></tr>
+            <tr data-age="50-64"><td class="label-cell">50–64</td>
+              <td class="num">32</td><td class="num pct">31%<span class="den">32/104</span></td>
+              <td class="num pct" data-cond="htn">—</td>
+              <td class="num pct" data-cond="t2dm">—</td>
+              <td class="num pct" data-cond="obesity">—</td></tr>
+            <tr data-age="65+"><td class="label-cell">65+ ⚠</td>
+              <td class="num low">5</td><td class="num low">50%<span class="den">5/10</span></td>
+              <td class="num nil" data-cond="htn">—</td>
+              <td class="num nil" data-cond="t2dm">—</td>
+              <td class="num nil" data-cond="obesity">—</td></tr>
+            <tr class="total"><td class="label-cell">All ages</td>
+              <td class="num">121</td><td class="num pct crit">27.6%<span class="den">121/439</span></td>
+              <td class="num pct" data-cond="htn">—</td>
+              <td class="num pct" data-cond="t2dm">—</td>
+              <td class="num pct" data-cond="obesity">—</td></tr>
+          </tbody>
+        </table>
+        <div class="headline-sub" style="margin-top:10px;font-size:10.5px">
+          <b>Note:</b> "Ever responded" = at least 1 survey attempted in patient's tenure. The headline 2.8% figure is surveys sent ÷ surveys attempted. Older patients (65+) show a higher per-patient response rate but at very small n (5/10). Condition-stratified response rate not shown — insufficient respondents for reliable cross-tab; flagged for future monitoring.
+        </div>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-11">
+      <h4>Progress sentiment distribution (among respondents, all-time n=388)</h4>
+      <table class="grid">
+        <thead><tr><th>Progress response</th><th>n</th><th>Share</th><th>Interpretation</th></tr></thead>
+        <tbody>
+          <tr><td class="label-cell">Wonderful</td><td class="num">20</td><td class="num pct">5.2%</td><td style="color:var(--muted);font-size:11px">Highest engagement · celebrate</td></tr>
+          <tr><td class="label-cell">Pretty Well</td><td class="num">102</td><td class="num pct pos">26.3%</td><td style="color:var(--muted);font-size:11px">On-track · reinforce</td></tr>
+          <tr><td class="label-cell">OK</td><td class="num">138</td><td class="num pct">35.6%</td><td style="color:var(--muted);font-size:11px">Middle majority</td></tr>
+          <tr><td class="label-cell">Not Great</td><td class="num">89</td><td class="num pct">22.9%</td><td style="color:var(--muted);font-size:11px">At-risk of drop-off</td></tr>
+          <tr><td class="label-cell">Terrible</td><td class="num">39</td><td class="num pct crit">10.1%</td><td style="color:var(--muted);font-size:11px">Escalation indicated</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:10px">Goal-continuity: 79% of respondents chose to keep the same goal the following week (306/388); 21% pivoted to a new one (82). This suggests plans, when reviewed, feel durable — the problem is getting them reviewed at all.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 12. MA-750 ═══ -->
+  <section id="sec-12">
+    <div class="sec-head"><div class="sec-num">12</div><div class="sec-title">MA-750 Forced-Onboarding Scheduling <em>pre/post launch Feb 11, 2026</em></div><div class="sec-window">90d pre · 70d post</div><button class="sec-toggle" onclick="toggleDrill('drill-12')">Drill ↓</button></div>
+    <div class="sec-body">
+      <div class="sec-headline">
+        <div class="headline-big positive">+60<span class="unit">%</span></div>
+        <div class="headline-sub">
+          <b>Relative lift</b> in patient self-scheduling share<br>
+          <b>5.6%</b> pre (15/266) · <b>9.0%</b> post (21/234)<br><br>
+          Feb '26 assessment completion peaked <b>86.3%</b>
+        </div>
+        <div class="headline-note" style="color:var(--alert)">⚠ App telemetry: user_events.fk_user_id is NULL across all 308 rows — mobile app adherence remains unmeasurable. Engineering flag open.</div>
+      </div>
+      <div>
+        <table class="grid">
+          <thead><tr><th>Phase / Scheduler</th><th>Visits</th><th>Complete</th><th>No-show</th><th>Pending</th><th>Share</th></tr></thead>
+          <tbody>
+            <tr><td class="label-cell">Pre · Patient</td><td class="num">15</td><td class="num">15</td><td class="num">0</td><td class="num">0</td><td class="num pct">5.6%</td></tr>
+            <tr><td class="label-cell">Pre · HAC</td><td class="num">251</td><td class="num">240</td><td class="num">10</td><td class="num">1</td><td class="num pct">94.4%</td></tr>
+            <tr><td class="label-cell">Post · Patient</td><td class="num">21</td><td class="num">12</td><td class="num">1</td><td class="num">8</td><td class="num pct pos">9.0%</td></tr>
+            <tr><td class="label-cell">Post · HAC</td><td class="num">213</td><td class="num">98</td><td class="num">23</td><td class="num">92</td><td class="num pct">91.0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="drill-body" id="drill-12"><p>Post-launch no-show rate (10.3%) runs higher than pre-launch (3.8%). Partly a partial-month artifact. Re-assess on May refresh when pending pool resolves.</p></div>
+  </section>
+
+  <!-- ═══ METHODS ═══ -->
+  <div class="methods">
+    <h3>Methods, definitions &amp; data-quality notes</h3>
+
+    <h4>Chronic-condition attribution — official disclosure</h4>
+    <p>All chronic-condition cohorts are sourced from patient self-report via the PreventScripts health-risk assessment instrument. These are <b>not</b> provider-adjudicated, EHR-verified, ICD-10-coded, or payer-claims-confirmed diagnoses. Independent validation required for payer-facing use.</p>
+
+    <h4>Sex / gender data gap</h4>
+    <p class="flag-warn">Sex and gender are <b>not captured</b> in the PreventScripts production schema. No <code>sex</code>, <code>gender</code>, or equivalent column exists on <code>users</code>, <code>assessment_attempts</code>, or related tables. Sex-stratified analysis cannot be produced from current data. Ethnicity is available on <code>assessment_attempts</code> as an alternative demographic dimension. Recommendation: add sex to the intake assessment for future stratification.</p>
+
+    <h4>CPT 99445 / 99454 framework</h4>
+    <p><b>99454</b> reimburses 16+ unique days of device data transmission per calendar month. <b>99445</b> (new CY 2026, per CMS 2026 Final Rule per the PreventScripts 2026 billing &amp; coding manual) reimburses 2–15 unique days. Patients bill one or the other in a given month. "Reading day" = distinct calendar date with ≥ 1 BP, glucose, or weight reading.</p>
+
+    <h4>Weight-loss &amp; blood-sugar outcome methodology</h4>
+    <p>Weight loss: first recorded weight in rolling 180d vs. most recent recorded weight, patients with ≥ 2 readings. Clinically-significant loss threshold: ≥ 5% per USPSTF. Two unit-entry outliers flagged in &lt;50 cohort inflating the average-change statistic; median is more representative. Blood sugar: 90-day average fingerstick glucose per patient, compared to clinical thresholds (≤ 140 controlled, &gt; 180 elevated, &gt; 300 crisis). No HbA1c in schema — fingerstick only.</p>
+
+    <h4>Lifestyle plan &amp; survey mechanics</h4>
+    <p>Active plan = <code>plans.status='Active' AND plans.archived=0</code>. A patient may have multiple historical plans; counts use most recent active plan per patient unless otherwise stated. Weekly survey response rate = surveys with <code>status='Attempted'</code> ÷ total surveys sent. Progress sentiment is self-reported on a 5-point scale (Terrible / Not Great / OK / Pretty Well / Wonderful).</p>
+
+    <h4>Data-quality flags</h4>
+    <ul>
+      <li class="flag-warn">Assessment "% completed" pre-Dec '24 shows 100% due to platform not persisting "sent but not completed" rows. Post-Dec '24 is reliable baseline.</li>
+      <li class="flag-warn">user_events.fk_user_id NULL across all rows — mobile app adherence unmeasurable.</li>
+      <li class="flag-warn">user_visits has no session-duration field — 99457 20-min threshold not directly measurable.</li>
+      <li class="flag-warn">No HbA1c table — T2DM outcomes limited to fingerstick glucose.</li>
+      <li class="flag-warn">114 historical un-enrollments lack captured reason (pre-2025).</li>
+      <li class="flag-warn">Depression not captured in condition taxonomy.</li>
+      <li class="flag-warn">Weight data contains suspected unit-entry outliers (lb vs kg or typo) — add input validator.</li>
+      <li class="flag-warn">Weekly-survey response rate is 2.8% all-time — channel effectively non-functional for data collection.</li>
+      <li>103 of 439 active RPM patients (23.5%) lack a matched assessment.</li>
+      <li>Cells with n &lt; 20 flagged with ⚠.</li>
+      <li>Filters (Age / Condition) highlight matching cells; they do not recompute totals. Year filter re-scopes KPI tile values and chart highlights.</li>
+    </ul>
+  </div>
+
+  <div class="footer">— End of v3 briefing · Next refresh: May 21, 2026 —</div>
+
+</div>
+
+<!-- ═══ DATA &amp; RENDERING ═══ -->
+<script>
+const months = ["2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12","2025-01","2025-02","2025-03","2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04"];
+
+const assess = {
+  sent:      [  1, 86,253,220,119,134,162,176,181,225,176,681,354,181,237,312,286,244,286,277,216,249,217,215,207,182,174, 82],
+  completed: [  1, 86,253,220,119,134,162,176,181,225,176,166,210,125,177,216,214,168,203,210,163,144,122,176,166,157,142, 67],
+  pct:       [100,100,100,100,100,100,100,100,100,100,100,24.4,59.3,69.1,74.7,69.2,74.8,68.9,71.0,75.8,75.5,57.8,56.2,81.9,80.2,86.3,81.6,81.7]
+};
+const enr = {
+  active:    [ 59, 74, 93,113,125,141,148,165,172,187,160,164,179,183,225,301,326,351,379,403,395,400,412,422,427,429,435,443],
+  new:       [ 24, 15, 19, 20, 12, 16, 12, 17,  7, 15,  8,  5, 17,  8, 43, 79, 31, 29, 36, 30, 13, 15, 23, 12, 17, 15, 16, 14],
+  unenr:     [  0,  0,  0,  0,  0,  5,  0,  0,  0, 35,  1,  2,  4,  1,  3,  6,  4,  8,  6, 21, 10, 11,  2, 12, 13, 10,  6,  4]
+};
+enr.churn = enr.unenr.map((u,i) => enr.active[i] > 0 ? +(100*u/enr.active[i]).toFixed(2) : 0);
+
+const reads = {
+  tier1:   [ 6,15,11,12,15, 8,10,17,11,13, 7, 8, 7,12,10,21,21,29,33,25,28,26,26,28,30,20,26,17],
+  tier215: [20,16,30,40,22,29,36,37,39,36,33,34,36,38,51,75,71,72,66,73,77,64,57,72,63,57,53,36],
+  tier16:  [ 1, 5, 4, 3, 4, 2, 2, 6, 5, 8, 7, 5, 9,10,14,24,24,16,19,16,18,17,13, 9,18,16,11, 4]
+};
+reads.any = reads.tier1.map((v,i) => v + reads.tier215[i] + reads.tier16[i]);
+reads.billable_new = reads.tier215.map((v,i) => v + reads.tier16[i]);
+
+const bp = {
+  readings:   [17,39,52,41,41,57,94,126,128,141,137,92,84,146,187,331,327,325,420,373,312,250,147,157,156,95,131,97],
+  under_14090:[10,24,29,25,32,52,85,104,101,112,104,80,71,131,170,284,300,282,372,323,247,203,102,116,124,81,110,87],
+  under_13080:[ 5,10,13,17,15,34,58, 71, 67, 89, 66,38,43,83,85,155,180,191,246,207,141,137,76,84,90,55,71,66]
+};
+bp.pct_14090 = bp.readings.map((r,i) => r > 0 ? +(100*bp.under_14090[i]/r).toFixed(1) : 0);
+bp.pct_13080 = bp.readings.map((r,i) => r > 0 ? +(100*bp.under_13080[i]/r).toFixed(1) : 0);
+
+const yearIx = { "2024":[0,11], "2025":[12,23], "2026":[24,27], "all":[0,27] };
+const yearLabel = { "2024":"CY 2024", "2025":"CY 2025", "2026":"CY 2026 YTD", "all":"All periods"};
+const sumR = (a,s,e) => { let t=0; for(let i=s;i<=e;i++) t+=a[i]; return t; };
+
+function kpis(yr){
+  const [s,e] = yearIx[yr]; const m = e-s+1;
+  const ps = Math.max(s,11);
+  const sent_r = sumR(assess.sent,ps,e), comp_r = sumR(assess.completed,ps,e);
+  const bill_new = sumR(reads.billable_new,s,e);
+  const bill_old = sumR(reads.tier16,s,e);
+  return {
+    assess_pct: sent_r > 0 ? (100*comp_r/sent_r).toFixed(1) : "—",
+    assess_n: `${comp_r.toLocaleString()} of ${sent_r.toLocaleString()}`,
+    panel: enr.active[e],
+    panel_delta: enr.active[e] - enr.active[s],
+    new_enr: sumR(enr.new,s,e),
+    churn: (enr.churn.slice(s,e+1).reduce((a,b)=>a+b,0)/m).toFixed(1),
+    bill_new_avg: (bill_new/m).toFixed(0),
+    bill_old_avg: (bill_old/m).toFixed(0),
+    bill_ratio: bill_old > 0 ? (bill_new/bill_old).toFixed(1) : "—"
+  };
+}
+
+function renderTiles(yr){
+  const k = kpis(yr);
+  const overTarget = parseFloat(k.churn) > 2.08;
+  document.getElementById("kpi-strip").innerHTML = `
+    <div class="tile" onclick="goToSec('sec-1')">
+      <div><div class="tile-lbl">01 · Assessments</div><div class="tile-num">${k.assess_pct}<span class="unit">%</span></div></div>
+      <div><div class="tile-den">${k.assess_n} completed</div><div class="tile-delta">${yearLabel[yr]}</div></div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile positive" onclick="goToSec('sec-2')">
+      <div><div class="tile-lbl">02 · Rising-Risk Penetration</div><div class="tile-num">76.6<span class="unit">%</span></div></div>
+      <div><div class="tile-den">232 of 303 · self-reported Dx</div><div class="tile-delta">current snapshot</div></div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile" onclick="goToSec('sec-3')">
+      <div><div class="tile-lbl">03 · Active Panel</div><div class="tile-num">${k.panel}</div></div>
+      <div><div class="tile-den">+${k.new_enr} new · ${yearLabel[yr]}</div><div class="tile-delta" style="color:var(--positive)">Δ ${k.panel_delta >= 0?'+':''}${k.panel_delta} vs start</div></div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile ${overTarget?'alert':'positive'}" onclick="goToSec('sec-4')">
+      <div><div class="tile-lbl">04 · Monthly Churn</div><div class="tile-num">${k.churn}<span class="unit">%</span></div></div>
+      <div><div class="tile-den">avg · target &lt; 2.08%</div><div class="tile-delta">${overTarget?'▲ over target':'▼ under target'}</div></div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile opp" onclick="goToSec('sec-6')">
+      <div><div class="tile-lbl">05 · 99445 + 99454 Billable</div><div class="tile-num">${k.bill_new_avg}<span class="unit">/mo</span></div></div>
+      <div><div class="tile-den">vs ${k.bill_old_avg}/mo 99454-only (${k.bill_ratio}×)</div><div class="tile-delta" style="color:var(--opp)">CY 2026 CPT</div></div>
+      <div class="flag new">NEW '26</div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile positive" onclick="goToSec('sec-8')">
+      <div><div class="tile-lbl">06 · Weight Loss ≥ 5%</div><div class="tile-num">20.5<span class="unit">%</span></div></div>
+      <div><div class="tile-den">30 of 146 w/ 2+ readings · 180d</div><div class="tile-delta">clinically significant</div></div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile positive" onclick="goToSec('sec-10')">
+      <div><div class="tile-lbl">07 · Active Plan Coverage</div><div class="tile-num">77.2<span class="unit">%</span></div></div>
+      <div><div class="tile-den">339 of 439 · lifestyle goal set</div><div class="tile-delta">Top: Move More (36%)</div></div>
+      <div class="drill">drill ↓</div>
+    </div>
+    <div class="tile alert" onclick="goToSec('sec-11')">
+      <div><div class="tile-lbl">08 · Weekly Survey Response</div><div class="tile-num">2.8<span class="unit">%</span></div></div>
+      <div><div class="tile-den">388 of 14,003 sent · all-time</div><div class="tile-delta" style="color:var(--alert)">channel non-functional</div></div>
+      <div class="drill">drill ↓</div>
+    </div>`;
+
+  document.getElementById("hl-assess-pct").innerHTML = `${k.assess_pct}<span class="unit">%</span>`;
+  document.getElementById("hl-assess-sub").innerHTML = `<b>${k.assess_n}</b> assessments completed<br><b>${yearLabel[yr]}</b> rollup · see chart for monthly<br>Latest (Apr '26): <b>82%</b>`;
+  document.getElementById("hl-enr-panel").innerHTML = k.panel;
+  document.getElementById("hl-enr-sub").innerHTML = `<b>Active RPM</b> at period end<br><b>${k.new_enr}</b> new · ${yearLabel[yr]}<br><b>${k.panel_delta >= 0?'+':''}${k.panel_delta}</b> net Δ<br>Covenant Care = 86.6% of panel`;
+  document.getElementById("hl-churn-pct").innerHTML = `${k.churn}<span class="unit">%</span>`;
+  document.getElementById("hl-churn-pct").className = `headline-big ${overTarget?'alert':'positive'}`;
+  document.getElementById("hl-churn-sub").innerHTML = `<b>Avg monthly churn</b><br>${yearLabel[yr]}<br>Target: <b>&lt; 2.08%</b><br>90d retention: <b>91.9%</b>`;
+}
+
+// ── CHARTS ──
+const CH = {W:900, L:60, R:30, T:18, B:38};
+function xS(i,n,ch){ return ch.L + (ch.W - ch.L - ch.R) * (i / Math.max(n-1, 1)); }
+function yS(v,vm,ch){ return ch.T + (ch.H - ch.T - ch.B) * (1 - v/vm); }
+
+function yearBands(n, ch, hl){
+  const bands = []; let cy = months[0].slice(0,4), s = 0;
+  for(let i=1;i<n;i++){ if(months[i].slice(0,4) !== cy){ bands.push({year:cy,start:s,end:i-1}); cy = months[i].slice(0,4); s = i; }}
+  bands.push({year:cy,start:s,end:n-1});
+  let svg = '';
+  bands.forEach((b,ix) => {
+    if(ix % 2 === 1 || b.year === hl){
+      const x1 = xS(b.start-0.5, n, ch), x2 = xS(b.end+0.5, n, ch);
+      const cls = b.year === hl ? 'style="fill:#FFF1C2;opacity:0.55"' : 'class="year-bg"';
+      svg += `<rect x="${x1}" y="${ch.T}" width="${x2-x1}" height="${ch.H-ch.T-ch.B}" ${cls}/>`;
+    }
+    const mid = (xS(b.start,n,ch) + xS(b.end,n,ch))/2;
+    svg += `<text class="year-lbl" x="${mid}" y="${ch.H-7}" text-anchor="middle">${b.year}</text>`;
+  });
+  return svg;
+}
+function axisY(vm, ch, tc, fmt){
+  let svg = `<line class="axis" x1="${ch.L}" y1="${ch.T}" x2="${ch.L}" y2="${ch.H-ch.B}"/><line class="axis" x1="${ch.L}" y1="${ch.H-ch.B}" x2="${ch.W-ch.R}" y2="${ch.H-ch.B}"/>`;
+  for(let i=0;i<=tc;i++){ const v = vm*i/tc; const y = yS(v,vm,ch);
+    svg += `<line class="gridline" x1="${ch.L}" y1="${y}" x2="${ch.W-ch.R}" y2="${y}"/><text class="lbl" x="${ch.L-6}" y="${y+3}" text-anchor="end">${fmt(v)}</text>`; }
+  return svg;
+}
+function axisMonths(n, ch){
+  let svg = '';
+  for(let i=0;i<n;i++){ if(i%3===0 || i===n-1){ svg += `<text class="lbl" x="${xS(i,n,ch)}" y="${ch.H-ch.B+13}" text-anchor="middle">${months[i].slice(5,7)}</text>`; }}
+  return svg;
+}
+function cLine(id, series, opts){
+  const ch = {...CH, H:opts.H||230};
+  const n = series[0].data.length;
+  const vm = opts.vmax || Math.max(...series.flatMap(s=>s.data))*1.1;
+  let svg = yearBands(n,ch,opts.highlight) + axisY(vm,ch,4,opts.fmt||(v=>v.toFixed(0))) + axisMonths(n,ch);
+  if(opts.targetLine){ const y = yS(opts.targetLine,vm,ch); svg += `<line class="target-line" x1="${ch.L}" y1="${y}" x2="${ch.W-ch.R}" y2="${y}"/><text class="lbl" x="${ch.W-ch.R-4}" y="${y-4}" text-anchor="end" style="fill:var(--alert)">Target ${opts.targetLine}%</text>`; }
+  series.forEach(s => {
+    const pts = s.data.map((v,i) => `${xS(i,n,ch)},${yS(v,vm,ch)}`).join(' ');
+    svg += `<polyline fill="none" stroke="${s.color}" stroke-width="${s.width||1.6}" points="${pts}"/>`;
+    s.data.forEach((v,i) => { svg += `<circle cx="${xS(i,n,ch)}" cy="${yS(v,vm,ch)}" r="1.8" fill="${s.color}"/>`; });
+  });
+  const el = document.getElementById(id); if(el){ el.setAttribute('viewBox', `0 0 ${ch.W} ${ch.H}`); el.innerHTML = svg; }
+}
+function cBars(id, series, opts){
+  const ch = {...CH, H:opts.H||230};
+  const n = series[0].data.length;
+  const totals = series[0].data.map((_,i) => series.reduce((s,ss) => s + ss.data[i], 0));
+  const vm = opts.vmax || Math.max(...totals)*1.1;
+  let svg = yearBands(n,ch,opts.highlight) + axisY(vm,ch,4,opts.fmt||(v=>v.toFixed(0))) + axisMonths(n,ch);
+  const bw = (ch.W - ch.L - ch.R)/n * 0.7;
+  for(let i=0;i<n;i++){
+    let base = ch.H-ch.B; const x = xS(i,n,ch)-bw/2;
+    series.forEach(s => { const h = (ch.H-ch.T-ch.B)*(s.data[i]/vm); svg += `<rect x="${x}" y="${base-h}" width="${bw}" height="${h}" fill="${s.color}"/>`; base -= h; });
+  }
+  if(opts.overlay){
+    const s = opts.overlay;
+    const pts = s.data.map((v,i) => `${xS(i,n,ch)},${yS(v,s.vmax||100,ch)}`).join(' ');
+    svg += `<polyline fill="none" stroke="${s.color}" stroke-width="1.5" points="${pts}"/>`;
+    s.data.forEach((v,i) => { svg += `<circle cx="${xS(i,n,ch)}" cy="${yS(v,s.vmax||100,ch)}" r="1.8" fill="${s.color}"/>`; });
+  }
+  const el = document.getElementById(id); if(el){ el.setAttribute('viewBox', `0 0 ${ch.W} ${ch.H}`); el.innerHTML = svg; }
+}
+
+function renderCharts(yr){
+  const hl = yr === 'all' ? null : yr;
+  cBars("chart-assess", [
+    {data:assess.completed, color:"#4A6B3A"},
+    {data:assess.sent.map((s,i)=>Math.max(s-assess.completed[i],0)), color:"#D4CFC4"}
+  ], {H:220, highlight:hl, overlay:{data:assess.pct, color:"#1F3A5F", vmax:100}});
+  cLine("chart-enr", [
+    {data:enr.active, color:"#1F3A5F", width:2},
+    {data:enr.new, color:"#4A6B3A", width:1.3},
+    {data:enr.unenr, color:"#B94A3C", width:1.3}
+  ], {H:230, highlight:hl, vmax:Math.max(...enr.active)*1.15});
+  cLine("chart-churn", [{data:enr.churn, color:"#B94A3C", width:1.8}], {H:200, highlight:hl, vmax:8, fmt:v=>v.toFixed(1)+'%', targetLine:2.08});
+  cBars("chart-usage", [
+    {data:reads.tier1, color:"#D4CFC4"},
+    {data:reads.tier215, color:"#2D5F4C"},
+    {data:reads.tier16, color:"#1F3A5F"}
+  ], {H:260, highlight:hl});
+  cBars("chart-bill", [{data:reads.tier16, color:"#1F3A5F"}, {data:reads.tier215, color:"#2D5F4C"}], {H:220, highlight:"2026"});
+  cLine("chart-bp", [
+    {data:bp.pct_14090, color:"#4A6B3A", width:1.8},
+    {data:bp.pct_13080, color:"#1F3A5F", width:1.8}
+  ], {H:220, highlight:hl, vmax:100, fmt:v=>v.toFixed(0)+'%'});
+}
+
+// ── TABLES ──
+function renderTables(yr){
+  let tb = '';
+  for(let i=0;i<months.length;i++){
+    const hl = (yr !== 'all' && months[i].startsWith(yr)) ? ' style="background:#FFF9E8"' : '';
+    const pc = assess.pct[i]>=80 ? 'pct pos' : (assess.pct[i]>=50 ? 'pct' : 'pct crit');
+    const note = i<11 ? '<em style="color:var(--warn);font-size:10px">pre-Dec\'24 ⚠</em>' : '';
+    tb += `<tr${hl}><td class="label-cell">${months[i]}</td><td class="num">${assess.sent[i].toLocaleString()}</td><td class="num">${assess.completed[i]}</td><td class="num ${pc}">${assess.pct[i]}%</td><td style="font-size:10px;color:var(--muted)">${note}</td></tr>`;
+  }
+  document.querySelector("#tbl-assess tbody").innerHTML = tb;
+
+  tb = '';
+  for(let i=0;i<months.length;i++){
+    const hl = (yr !== 'all' && months[i].startsWith(yr)) ? ' style="background:#FFF9E8"' : '';
+    const net = enr.new[i]-enr.unenr[i];
+    const cc = enr.churn[i]>2.08 ? 'pct crit' : 'pct pos';
+    tb += `<tr${hl}><td class="label-cell">${months[i]}</td><td class="num">${enr.active[i]}</td><td class="num">+${enr.new[i]}</td><td class="num">${enr.unenr[i]>0?'−'+enr.unenr[i]:'0'}</td><td class="num ${net>=0?'pct pos':'pct crit'}">${net>=0?'+':''}${net}</td><td class="num ${cc}">${enr.churn[i].toFixed(2)}%</td></tr>`;
+  }
+  document.querySelector("#tbl-enr tbody").innerHTML = tb;
+
+  tb = '';
+  for(let i=0;i<months.length;i++){
+    const hl = (yr !== 'all' && months[i].startsWith(yr)) ? ' style="background:#FFF9E8"' : '';
+    const is26 = months[i].startsWith('2026');
+    const oldN = reads.tier16[i], newN = oldN + reads.tier215[i];
+    const dx = oldN > 0 ? (newN/oldN).toFixed(1)+'×' : '—';
+    const bg = !hl && is26 ? ' style="background:#EAF1EC"' : hl;
+    tb += `<tr${bg}><td class="label-cell">${months[i]} ${is26?'<em style="color:var(--opp);font-size:10px">· 99445 live</em>':''}</td><td class="num">${oldN}</td><td class="num ${is26?'pct opp':'pct'}">${reads.tier215[i]}</td><td class="num ${is26?'pct opp':''}">${newN}</td><td class="num ${is26?'pct opp':''}">${dx}</td></tr>`;
+  }
+  document.querySelector("#tbl-bill tbody").innerHTML = tb;
+}
+
+// ── FILTERS ──
+const filterState = { year:"all", age:"all", cond:"all" };
+
+function applyFilters(){
+  // Condition column highlight
+  document.querySelectorAll('[data-cond]').forEach(el => el.classList.remove('cond-hl'));
+  if(filterState.cond !== "all"){
+    document.querySelectorAll(`[data-cond="${filterState.cond}"]`).forEach(el => el.classList.add('cond-hl'));
+  }
+  // Age row highlight
+  document.querySelectorAll('[data-age]').forEach(el => el.classList.remove('age-hl'));
+  if(filterState.age !== "all"){
+    document.querySelectorAll(`tr[data-age="${filterState.age}"]`).forEach(el => el.classList.add('age-hl'));
+  }
+  // Year — re-render KPIs / charts / tables
+  renderTiles(filterState.year);
+  renderCharts(filterState.year);
+  renderTables(filterState.year);
+}
+
+document.querySelectorAll('.filters .f-buttons').forEach(group => {
+  if(!group.dataset.filter) return;
+  const key = group.dataset.filter;
+  group.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      if(b.disabled) return;
+      group.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      filterState[key] = b.dataset.val;
+      applyFilters();
+    });
+  });
+});
+
+function toggleDrill(id){
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  const btn = el.parentElement.querySelector('.sec-toggle');
+  if(btn) btn.textContent = el.classList.contains('open') ? 'Collapse ↑' : 'Drill ↓';
+}
+function goToSec(id){ document.getElementById(id).scrollIntoView({behavior:"smooth", block:"start"}); }
+
+// INIT
+applyFilters();
+</script>
+</body>
+</html>
